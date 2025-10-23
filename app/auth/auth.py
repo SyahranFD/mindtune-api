@@ -30,7 +30,7 @@ async def get_current_user(
     db: Session = Depends(get_db)
 ):
     """
-    Get current user from access token in Authorization header
+    Get current user from access token in Authorization header and validate with Spotify API
     """
     # Coba dapatkan token dari berbagai sumber
     access_token = None
@@ -58,22 +58,49 @@ async def get_current_user(
     # Debug: Print token untuk membantu troubleshooting
     print(f"Received token: {access_token[:10]}...")
     
-    # Cari user berdasarkan access_token
-    user = db.query(UserModel).filter(UserModel.access_token == access_token).first()
+    # Import di sini untuk menghindari circular import
+    from ..service.user_service import UserService
+    user_service = UserService(db)
     
-    if not user:
-        # Debug: Cek apakah ada user dengan token yang mirip
-        all_users = db.query(UserModel).all()
-        print(f"Total users in DB: {len(all_users)}")
-        for u in all_users:
-            if u.access_token:
-                print(f"User {u.id} token: {u.access_token[:10]}...")
+    try:
+        # Validasi token dengan Spotify API
+        print(f"Validating token with Spotify API...")
+        spotify_profile = user_service.get_user_profile(access_token)
+        spotify_id = spotify_profile.get("id")
         
+        if not spotify_id:
+            print("Failed to get Spotify ID from profile")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Spotify token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
+        # Cari user berdasarkan spotify_id
+        user = db.query(UserModel).filter(UserModel.spotify_id == spotify_id).first()
+        
+        if not user:
+            print(f"User with Spotify ID {spotify_id} not found in database")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Update token di database jika berbeda
+        if user.access_token != access_token:
+            print(f"Updating access token for user {user.id}")
+            user.access_token = access_token
+            db.commit()
+            db.refresh(user)
+        
+        print(f"Successfully authenticated user: {user.id} with Spotify ID: {spotify_id}")
+        return user
+        
+    except Exception as e:
+        print(f"Error validating token with Spotify API: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    print(f"Successfully authenticated user: {user.id}")
-    return user

@@ -49,15 +49,28 @@ def callback(code: str, request: Request, db: Session = Depends(get_db)):
     }
 
 
-@router.get("/me", summary="Get Current User Profile", description="Get profile of the currently authenticated user. Example curl: `curl -X 'GET' 'http://127.0.0.1:8000/api/users/me' -H 'accept: application/json' -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'`", responses={
+@router.get("/me", summary="Get Current User Profile", description="Get profile of the currently authenticated user from Spotify API. Example curl: `curl -X 'GET' 'http://127.0.0.1:8000/api/users/me' -H 'accept: application/json' -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'`", responses={
     401: {"description": "Not authenticated"},
-    200: {"description": "User profile"}
+    200: {"description": "User profile from Spotify API"}
 })
 def get_current_user_profile(current_user: UserModel = Depends(get_current_user)):
-    """Get current user profile"""
+    """Get current user profile from Spotify API"""
     # Debug: Print user info
-    print(f"Returning profile for user: {current_user.id}")
-    return UserBase.from_orm(current_user)
+    print(f"Getting Spotify profile for user: {current_user.id}")
+    
+    # Gunakan token untuk mendapatkan profil langsung dari Spotify API
+    user_service = UserService()
+    try:
+        spotify_profile = user_service.get_user_profile(current_user.access_token)
+        print(f"Successfully retrieved Spotify profile for user: {current_user.id}")
+        return spotify_profile
+    except Exception as e:
+        print(f"Error getting Spotify profile: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Failed to get profile from Spotify API",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 @router.get("/spotify/{spotify_id}")
@@ -76,22 +89,35 @@ def refresh_token(current_user: UserModel = Depends(get_current_user), db: Sessi
     """Refresh access token for current user"""
     user_service = UserService(db)
     
-    # Refresh token
-    token_info = user_service.refresh_access_token(current_user.refresh_token)
-    
-    # Update user with new tokens
-    current_user.access_token = token_info.get("access_token")
-    if token_info.get("refresh_token"):
-        current_user.refresh_token = token_info.get("refresh_token")
-    
-    db.commit()
-    db.refresh(current_user)
-    
-    # Debug: Print token yang diperbarui
-    print(f"Refreshed token for user {current_user.id}: {current_user.access_token[:10]}...")
-    
-    return {
-        "message": "Token refreshed successfully", 
-        "access_token": current_user.access_token,
-        "token_type": "bearer"
-    }
+    try:
+        # Refresh token
+        print(f"Refreshing token for user {current_user.id} with refresh token: {current_user.refresh_token[:10]}...")
+        token_info = user_service.refresh_access_token(current_user.refresh_token)
+        
+        # Update user with new tokens
+        current_user.access_token = token_info.get("access_token")
+        if token_info.get("refresh_token"):
+            current_user.refresh_token = token_info.get("refresh_token")
+        
+        db.commit()
+        db.refresh(current_user)
+        
+        # Debug: Print token yang diperbarui
+        print(f"Refreshed token for user {current_user.id}: {current_user.access_token[:10]}...")
+        
+        # Validasi token baru dengan Spotify API
+        spotify_profile = user_service.get_user_profile(current_user.access_token)
+        print(f"Validated new token with Spotify API for user: {current_user.id}")
+        
+        return {
+            "message": "Token refreshed successfully", 
+            "access_token": current_user.access_token,
+            "token_type": "bearer"
+        }
+    except Exception as e:
+        print(f"Error refreshing token: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Failed to refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
