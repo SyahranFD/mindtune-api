@@ -73,6 +73,13 @@ class UserService:
         # Check if user exists by Spotify ID
         user = self.db.query(UserModel).filter(UserModel.spotify_id == user_profile["id"]).first()
         
+        # Pastikan token disimpan dalam format yang konsisten
+        access_token = token_info.get("access_token")
+        refresh_token = token_info.get("refresh_token")
+        
+        # Debug: Print token yang akan disimpan
+        print(f"Token to be stored: {access_token[:10]}...")
+        
         if not user:
             # Create new user
             user_data = UserCreate(
@@ -81,8 +88,8 @@ class UserService:
                 name=user_profile.get("display_name"),
                 spotify_id=user_profile.get("id"),
                 images_url=user_profile.get("images")[0].get("url") if user_profile.get("images") else None,
-                access_token=token_info.get("access_token"),
-                refresh_token=token_info.get("refresh_token")
+                access_token=access_token,
+                refresh_token=refresh_token
             )
             
             user = UserModel(
@@ -91,8 +98,8 @@ class UserService:
                 name=user_data.name,
                 spotify_id=user_data.spotify_id,
                 images_url=user_data.images_url,
-                access_token=user_data.access_token,
-                refresh_token=user_data.refresh_token
+                access_token=access_token,
+                refresh_token=refresh_token
             )
             
             self.db.add(user)
@@ -103,11 +110,14 @@ class UserService:
             user.name = user_profile.get("display_name", user.name)
             user.email = user_profile.get("email", user.email)
             user.images_url = user_profile.get("images")[0].get("url") if user_profile.get("images") else user.images_url
-            user.access_token = token_info.get("access_token")
-            user.refresh_token = token_info.get("refresh_token", user.refresh_token)
+            user.access_token = access_token
+            user.refresh_token = refresh_token if refresh_token else user.refresh_token
             
             self.db.commit()
             self.db.refresh(user)
+        
+        # Debug: Verifikasi token yang disimpan
+        print(f"Stored token in DB: {user.access_token[:10]}...")
         
         return user
 
