@@ -1,123 +1,59 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.responses import RedirectResponse
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import APIRouter, Depends, Security
 from sqlalchemy.orm import Session
 
 from ..config.database import get_db
-from ..service.user_service import UserService
+from ..service import service_user
 from ..schemas.schemas_user import UserBase
 from ..auth.auth import get_current_user
 from ..model.user import UserModel
 
-router = APIRouter(prefix="/api/users", tags=["users"])
+router_user = APIRouter()
 
 
-@router.get("/login")
+@router_user.get("/login")
 def login():
-    """Generate Spotify login URL"""
-    user_service = UserService()
-    return user_service.get_auth_url()
+    return service_user.get_auth_url()
 
-
-@router.get("/callback")
-def callback(code: str, request: Request, db: Session = Depends(get_db)):
-    """Handle Spotify OAuth callback"""
-    user_service = UserService(db)
-    
-    # Exchange authorization code for access token
-    token_info = user_service.get_access_token(code)
-    
-    # Print token untuk debugging
+@router_user.get("/access-token")
+def get_access_token(
+    code: str,
+    db: Session = Depends(get_db)
+):
+    token_info = service_user.get_access_token(code)
     access_token = token_info["access_token"]
-    print(f"Callback received token: {access_token[:10]}...")
+    user_profile = service_user.get_user_profile(access_token)
+
+    # Create or update user in the database
+    service_user.create_or_update_user(db, token_info, user_profile)
     
-    # Get user profile from Spotify
-    user_profile = user_service.get_user_profile(access_token)
-    
-    # Create or update user in database
-    user = user_service.create_or_update_user(token_info, user_profile)
-    
-    # Verifikasi token yang disimpan
-    print(f"Stored token for user {user.id}: {user.access_token[:10]}...")
-    
-    # Return user data with access token for authentication
-    user_data = UserBase.from_orm(user).dict()
     return {
-        "user": user_data,
         "access_token": access_token,
         "token_type": "bearer"
     }
 
+@router_user.get("/me")
+def get_current_user_profile(
+    db: Session = Depends(get_db),
+    current_user=Security(get_current_user, scopes=["*"])
+):
+    spotify_profile = service_user.get_user_profile(current_user.access_token)
+    user = service_user.get_user_by_spotify_id(db, spotify_profile["id"])
+    return UserBase.model_validate(user)
 
-@router.get("/me", summary="Get Current User Profile", description="Get profile of the currently authenticated user from Spotify API. Example curl: `curl -X 'GET' 'http://127.0.0.1:8000/api/users/me' -H 'accept: application/json' -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'`", responses={
-    401: {"description": "Not authenticated"},
-    200: {"description": "User profile from Spotify API"}
-})
-def get_current_user_profile(current_user: UserModel = Depends(get_current_user)):
-    """Get current user profile from Spotify API"""
-    # Debug: Print user info
-    print(f"Getting Spotify profile for user: {current_user.id}")
-    
-    # Gunakan token untuk mendapatkan profil langsung dari Spotify API
-    user_service = UserService()
-    try:
-        spotify_profile = user_service.get_user_profile(current_user.access_token)
-        print(f"Successfully retrieved Spotify profile for user: {current_user.id}")
-        return spotify_profile
-    except Exception as e:
-        print(f"Error getting Spotify profile: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Failed to get profile from Spotify API",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-
-@router.get("/spotify/{spotify_id}")
-def get_user_by_spotify_id(spotify_id: str, db: Session = Depends(get_db)):
-    """Get user by Spotify ID"""
-    user_service = UserService(db)
-    user = user_service.get_user_by_spotify_id(spotify_id)
-    return UserBase.from_orm(user)
-
-
-@router.post("/refresh-token", summary="Refresh Access Token", description="Refresh the access token for the currently authenticated user. Example curl: `curl -X 'POST' 'http://127.0.0.1:8000/api/users/refresh-token' -H 'accept: application/json' -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'`", responses={
-    401: {"description": "Not authenticated"},
-    200: {"description": "Token refreshed successfully"}
-})
+@router_user.post("/refresh-token")
 def refresh_token(current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Refresh access token for current user"""
-    user_service = UserService(db)
-    
-    try:
-        # Refresh token
-        print(f"Refreshing token for user {current_user.id} with refresh token: {current_user.refresh_token[:10]}...")
-        token_info = user_service.refresh_access_token(current_user.refresh_token)
-        
-        # Update user with new tokens
-        current_user.access_token = token_info.get("access_token")
-        if token_info.get("refresh_token"):
-            current_user.refresh_token = token_info.get("refresh_token")
-        
-        db.commit()
-        db.refresh(current_user)
-        
-        # Debug: Print token yang diperbarui
-        print(f"Refreshed token for user {current_user.id}: {current_user.access_token[:10]}...")
-        
-        # Validasi token baru dengan Spotify API
-        spotify_profile = user_service.get_user_profile(current_user.access_token)
-        print(f"Validated new token with Spotify API for user: {current_user.id}")
-        
-        return {
-            "message": "Token refreshed successfully", 
-            "access_token": current_user.access_token,
-            "token_type": "bearer"
-        }
-    except Exception as e:
-        print(f"Error refreshing token: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Failed to refresh token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # Refresh token
+    token_info = service_user.refresh_access_token(current_user.refresh_token)
+
+    # Update user with new tokens
+    current_user.access_token = token_info.get("access_token")
+    if token_info.get("refresh_token"):
+        current_user.refresh_token = token_info.get("refresh_token")
+
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "Token refreshed successfully",
+        "access_token": current_user.access_token,
+    }

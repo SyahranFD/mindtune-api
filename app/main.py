@@ -2,10 +2,9 @@ from dotenv import find_dotenv, load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
-from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 
-from .router.router_user import router as user_router
+from .router.router_user import router_user
 
 load_dotenv(find_dotenv())
 
@@ -30,7 +29,7 @@ def custom_openapi():
                 "type": "http",
                 "scheme": "bearer",
                 "bearerFormat": "JWT",
-                "description": "Enter the access token you received from the /api/users/callback endpoint"
+                "description": "Enter the access token you received from the /api/users/access-token endpoint"
             }
         }
     }
@@ -67,9 +66,5 @@ def docs():
     return RedirectResponse(url='/docs')
 
 # Include routers
-app.include_router(user_router)
+app.include_router(router_user, prefix="/api/users", tags=["Users"])
 
-# Example route
-@app.get('/hello')
-def hello():
-    return {"message": "Hello World"}

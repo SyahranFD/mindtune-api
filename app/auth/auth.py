@@ -5,6 +5,7 @@ from typing import Optional
 
 from ..config.database import get_db
 from ..model.user import UserModel
+from ..service import service_user
 
 # Untuk dokumentasi OpenAPI dan form login
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/users/login", auto_error=False)
@@ -52,20 +53,14 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Debug: Print token untuk membantu troubleshooting
     print(f"Received token: {access_token[:10]}...")
-    
-    # Import di sini untuk menghindari circular import
-    from ..service.user_service import UserService
-    user_service = UserService(db)
     
     try:
         # Validasi token dengan Spotify API
         print(f"Validating token with Spotify API...")
-        spotify_profile = user_service.get_user_profile(access_token)
+        spotify_profile = service_user.get_user_profile(access_token)
         spotify_id = spotify_profile.get("id")
         
         if not spotify_id:
@@ -84,7 +79,6 @@ async def get_current_user(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found",
-                headers={"WWW-Authenticate": "Bearer"},
             )
         
         # Update token di database jika berbeda
@@ -102,5 +96,4 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
         )
