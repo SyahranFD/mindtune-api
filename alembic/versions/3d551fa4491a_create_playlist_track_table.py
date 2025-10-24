@@ -22,11 +22,11 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.create_table(
         "playlist_track",
-        sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
+        sa.Column("id", sa.String(255), primary_key=True),
+        sa.Column("playlist_id", sa.String(255), sa.ForeignKey("playlist.id"), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("artist", sa.String(255), nullable=False),
         sa.Column("duration", sa.Integer, nullable=True),  # Duration in milliseconds
-        sa.Column("playlist_id", sa.Integer, sa.ForeignKey("playlist.id"), nullable=False),
         sa.Column("created_at", sa.DateTime, nullable=False, default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime, nullable=False, default=sa.func.now(), onupdate=sa.func.now()),
     )

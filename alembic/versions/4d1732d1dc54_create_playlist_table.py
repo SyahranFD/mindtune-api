@@ -22,7 +22,7 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.create_table(
         "playlist",
-        sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
+        sa.Column("id", sa.String(255), primary_key=True),
         sa.Column("spotify_id", sa.String(255), sa.ForeignKey("user.spotify_id"), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("phq9_score", sa.Integer, nullable=True),
