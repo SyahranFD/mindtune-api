@@ -7,11 +7,9 @@ from ..config.database import Base
 class UserModel(Base):
     __tablename__ = "user"
 
-    id = Column(String(255), primary_key=True)
+    spotify_id = Column(String(255), primary_key=True, unique=True)
     email = Column(String(255), nullable=False, unique=True)
     name = Column(String(255), nullable=False)
-    images_url = Column(Text, nullable=True)
-    spotify_id = Column(String(255), nullable=True, unique=True)
     access_token = Column(Text, nullable=True)
     refresh_token = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=func.now())

@@ -48,16 +48,22 @@ def create_or_update_user(db: Session, token_info: dict, user_profile: dict):
     if not user:
         # Create new user
         user_data = UserCreate(
-            id=str(uuid.uuid4()),
+            spotify_id=user_profile.get("id"),
             email=user_profile.get("email"),
             name=user_profile.get("display_name"),
-            spotify_id=user_profile.get("id"),
             access_token=access_token,
             refresh_token=refresh_token
         )
-        db.add(user_data)
+        user = UserModel(
+            spotify_id=user_data.spotify_id,
+            email=user_data.email or "",
+            name=user_data.name or "",
+            access_token=user_data.access_token,
+            refresh_token=user_data.refresh_token
+        )
+        db.add(user)
         db.commit()
-        db.refresh(user_data)
+        db.refresh(user)
     else:
         # Update existing user
         user.name = user_profile.get("display_name", user.name)
@@ -72,12 +78,6 @@ def create_or_update_user(db: Session, token_info: dict, user_profile: dict):
 def refresh_access_token(refresh_token: str):
     token_info = sp_oauth.refresh_access_token(refresh_token)
     return token_info
-
-def get_user_by_id(db: Session, user_id: str):
-    user = db.query(UserModel).filter(UserModel.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail=f"User with ID {user_id} not found")
-    return user
 
 def get_user_by_spotify_id(db: Session, spotify_id: str):
     user = db.query(UserModel).filter(UserModel.spotify_id == spotify_id).first()

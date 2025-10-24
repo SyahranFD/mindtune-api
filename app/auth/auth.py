@@ -83,12 +83,12 @@ async def get_current_user(
         
         # Update token di database jika berbeda
         if user.access_token != access_token:
-            print(f"Updating access token for user {user.id}")
+            print(f"Updating access token for user {user.spotify_id}")
             user.access_token = access_token
             db.commit()
             db.refresh(user)
         
-        print(f"Successfully authenticated user: {user.id} with Spotify ID: {spotify_id}")
+        print(f"Successfully authenticated user: {user.name} with Spotify ID: {spotify_id}")
         return user
         
     except Exception as e:

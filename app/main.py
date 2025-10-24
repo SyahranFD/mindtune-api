@@ -23,14 +23,15 @@ def custom_openapi():
     )
     
     # Add security scheme for Bearer token
-    openapi_schema["components"] = {
-        "securitySchemes": {
-            "Bearer": {
-                "type": "http",
-                "scheme": "bearer",
-                "bearerFormat": "JWT",
-                "description": "Enter the access token you received from the /api/users/access-token endpoint"
-            }
+    if "components" not in openapi_schema:
+        openapi_schema["components"] = {}
+        
+    openapi_schema["components"]["securitySchemes"] = {
+        "Bearer": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Enter the access token you received from the /api/users/access-token endpoint"
         }
     }
     
@@ -44,7 +45,12 @@ def custom_openapi():
                 # Skip login dan callback endpoints
                 if method.get("operationId") not in ["login", "callback"]:
                     method["security"] = [{"Bearer": []}]
-    
+                    
+                # Hapus parameter authorization dari dokumentasi
+                if "parameters" in method:
+                    method["parameters"] = [param for param in method["parameters"] 
+                    if not (param.get("name") == "authorization" and param.get("in") == "header")]
+                    
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 

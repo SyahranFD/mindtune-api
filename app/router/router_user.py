@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Security
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ..config.database import get_db
@@ -21,20 +21,22 @@ def get_access_token(
 ):
     token_info = service_user.get_access_token(code)
     access_token = token_info["access_token"]
+    refresh_token = token_info.get("refresh_token")
+
     user_profile = service_user.get_user_profile(access_token)
 
     # Create or update user in the database
     service_user.create_or_update_user(db, token_info, user_profile)
-    
+
     return {
         "access_token": access_token,
-        "token_type": "bearer"
+        "refresh_token": refresh_token,
     }
 
 @router_user.get("/me")
 def get_current_user_profile(
     db: Session = Depends(get_db),
-    current_user=Security(get_current_user, scopes=["*"])
+    current_user = Depends(get_current_user)
 ):
     spotify_profile = service_user.get_user_profile(current_user.access_token)
     user = service_user.get_user_by_spotify_id(db, spotify_profile["id"])

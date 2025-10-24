@@ -22,11 +22,9 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.create_table(
         "user",
-        sa.Column("id", sa.String(255), primary_key=True),
+        sa.Column("spotify_id", sa.String(255), primary_key=True, unique=True),
         sa.Column("email", sa.String(255), nullable=False, unique=True),
         sa.Column("name", sa.String(255), nullable=False),
-        sa.Column("images_url", sa.Text, nullable=True),
-        sa.Column("spotify_id", sa.String(255), nullable=True, unique=True),
         sa.Column("access_token", sa.Text, nullable=True),
         sa.Column("refresh_token", sa.Text, nullable=True),
         sa.Column("created_at", sa.DateTime, nullable=False, default=sa.func.now()),

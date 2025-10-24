@@ -5,11 +5,9 @@ from pydantic import BaseModel, EmailStr
 
 
 class UserBase(BaseModel):
-    id: str
+    spotify_id: str
     email: Optional[EmailStr] = None
     name: Optional[str] = None
-    images_url: Optional[str] = None
-    spotify_id: Optional[str] = None
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
     created_at: datetime
@@ -21,10 +19,8 @@ class UserBase(BaseModel):
 
 
 class UserCreate(BaseModel):
-    id: str
+    spotify_id: str
     email: Optional[EmailStr] = None
     name: Optional[str] = None
-    spotify_id: Optional[str] = None
-    images_url: Optional[str] = None
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
