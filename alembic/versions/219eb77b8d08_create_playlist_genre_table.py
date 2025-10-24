@@ -23,9 +23,8 @@ def upgrade() -> None:
     op.create_table(
         "playlist_genre",
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column("name", sa.String(100), nullable=False),
         sa.Column("playlist_id", sa.Integer, sa.ForeignKey("playlist.id"), nullable=False),
-        sa.Column("spotify_id", sa.String(255), sa.ForeignKey("user.spotify_id"), nullable=False),
+        sa.Column("name", sa.String(100), nullable=False),
         sa.Column("created_at", sa.DateTime, nullable=False, default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime, nullable=False, default=sa.func.now(), onupdate=sa.func.now()),
     )
