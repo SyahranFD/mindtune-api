@@ -5,16 +5,16 @@ from sqlalchemy.orm import relationship
 from ..config.database import Base
 
 
-class UserModel(Base):
-    __tablename__ = "user"
+class PlaylistTrackModel(Base):
+    __tablename__ = "playlist_track"
 
-    spotify_id = Column(String(255), primary_key=True, unique=True)
-    email = Column(String(255), nullable=False, unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
-    access_token = Column(Text, nullable=True)
-    refresh_token = Column(Text, nullable=True)
+    artist = Column(String(255), nullable=False)
+    duration = Column(Integer, nullable=True)  # Duration in milliseconds
+    playlist_id = Column(Integer, ForeignKey("playlist.id"), nullable=False)
     created_at = Column(DateTime, nullable=False, default=func.now())
     updated_at = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
-    
+
     # Relationships
-    playlists = relationship("PlaylistModel", back_populates="user")
+    playlist = relationship("PlaylistModel", back_populates="tracks")
