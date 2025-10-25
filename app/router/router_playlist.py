@@ -12,29 +12,23 @@ router_playlist = APIRouter()
 
 
 @router_playlist.post("/", response_model=PlaylistResponse, status_code=status.HTTP_201_CREATED)
-async def create_playlist_endpoint(
+async def create_playlist(
     pre_mood: int,
     phq9: int,
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user)
 ):
-    """
-    Create a new playlist based on user's mood and PHQ-9 score
-    """
     playlist = create_playlist(db, current_user.spotify_id, pre_mood, phq9)
     return playlist
 
 
-@router_playlist.put("/{playlist_id}", response_model=PlaylistResponse)
-async def update_playlist_endpoint(
+@router_playlist.put("/{playlist_id}/feedback", response_model=PlaylistResponse)
+async def update_playlist_feedback(
     playlist_id: str,
     playlist_data: PlaylistUpdate,
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user)
 ):
-    """
-    Update a playlist with post_mood and/or feedback
-    """
     # First check if the playlist exists and belongs to the current user
     playlist = get_playlist_by_id(db, playlist_id)
     
@@ -56,26 +50,20 @@ async def update_playlist_endpoint(
 
 
 @router_playlist.get("/", response_model=List[PlaylistResponse])
-async def get_all_playlists_endpoint(
+async def get_all_playlists(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user)
 ):
-    """
-    Get all playlists for the current user
-    """
     playlists = get_all_playlists(db, current_user.spotify_id)
     return playlists
 
 
 @router_playlist.get("/{playlist_id}", response_model=PlaylistResponse)
-async def get_playlist_endpoint(
+async def get_playlist(
     playlist_id: str,
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user)
 ):
-    """
-    Get a specific playlist by ID
-    """
     playlist = get_playlist_by_id(db, playlist_id)
     
     # Check if the playlist belongs to the current user

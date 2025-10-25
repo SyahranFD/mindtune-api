@@ -75,6 +75,5 @@ def docs():
 
 # Include routers
 app.include_router(router_user, prefix="/api/users", tags=["Users"])
-app.include_router(router_ai, prefix="/api/ai", tags=["AI"])
 app.include_router(router_playlist, prefix="/api/playlists", tags=["Playlists"])
 
