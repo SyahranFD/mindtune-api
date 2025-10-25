@@ -12,7 +12,7 @@ def test_playlist_healing(
     pre_mood: int,
     phq9: int,
     locale: str,
-    desired_minutes: int,
+    desired_minutes: str,
 ):
     prompt = service_ai.build_prompt_playlist_healing(
         pre_mood=pre_mood,

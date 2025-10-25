@@ -5,9 +5,9 @@ from pydantic import BaseModel
 
 
 class PlaylistGenreBase(BaseModel):
-    id: int
+    id: str
     name: str
-    playlist_id: int
+    playlist_id: str
     created_at: datetime
     updated_at: datetime
 
@@ -16,6 +16,10 @@ class PlaylistGenreBase(BaseModel):
 
 
 class PlaylistGenreCreate(BaseModel):
-    id: int
+    id: str
     name: str
-    playlist_id: int
+    playlist_id: str
+
+
+class PlaylistGenreResponse(PlaylistGenreBase):
+    pass

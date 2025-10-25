@@ -25,23 +25,27 @@ def build_prompt_playlist_healing(
         pre_mood: int,
         phq9: int,
         locale: str,
-        desired_minutes: int,
+        desired_minutes: str,
         top_ids: Optional[List[str]] = None
 ) -> str:
     prompt = {
         "system": (
             "You are a clinical-aware music recommender for a healing-mode web app. "
-            "Your output MUST be exactly a JSON object with two keys: "
-            "'playlist' (array of strings in 'title - artist' format) "
-            "and 'genres' (array of strings representing dominant genres in the playlist)."
+            "Your output MUST be exactly a JSON object with four keys: "
+            "'playlist_title' (string), "
+            "'description' (string), "
+            "'playlist' (array of objects with 'title' and 'artist'), "
+            "and 'genres' (array of strings)."
         ),
         "instructions": {
             "triage": {
                 "phq_threshold_referral": 20
             },
             "goal": (
-                "Generate a therapeutic Spotify playlist to help regulate mood using ISO-principle: "
-                "start mirroring current affect then gently uplift toward a calm/hopeful state."
+                "Generate a therapeutic Spotify playlist to help regulate mood using the ISO principle: "
+                "start by reflecting the user's current affect (based on pre_mood) and then gently uplift toward calm, relief, or hope. "
+                "Create a playlist title and description that feel compassionate, soothing, and emotionally validating. "
+                "Songs must align with the mood journey and safety criteria."
             ),
             "audio_feature_guidelines": {
                 "map_pre_mood_to_valence": True,
@@ -56,12 +60,18 @@ def build_prompt_playlist_healing(
             },
             "duration_minutes": desired_minutes,
             "output_format": (
-                "Return ONLY a valid JSON object with this structure:\n\n"
+                "Return ONLY a valid JSON object with this structure format:\n\n"
                 "{\n"
-                "  \"playlist\": [\"Holocene - Bon Iver\", \"Sunset Lover - Petit Biscuit\"],\n"
-                "  \"genres\": [\"indie folk\", \"chillwave\", \"ambient pop\"]\n"
+                "  \"playlist_title\": \"<playlist title>\",\n"
+                "  \"description\": \"<1–2 sentences describing the playlist>\",\n"
+                "  \"playlist\": [\n"
+                "    {\"title\": \"<song title 1>\", \"artist\": \"<artist name 1>\"},\n"
+                "    {\"title\": \"<song title 2>\", \"artist\": \"<artist name 2>\"}\n"
+                "  ],\n"
+                "  \"genres\": [\"<genre 1>\", \"<genre 2>\", \"<genre 3>\"]\n"
                 "}\n\n"
-                "No explanations or text outside the JSON."
+                "Do NOT copy or reuse the example titles, artists, or genres. "
+                "Generate completely new and context-appropriate content for the current user data."
             ),
         },
         "user": {

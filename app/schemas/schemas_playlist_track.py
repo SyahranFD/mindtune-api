@@ -5,11 +5,11 @@ from pydantic import BaseModel
 
 
 class PlaylistTrackBase(BaseModel):
-    id: int
+    id: str
     name: str
     artist: str
     duration: Optional[int] = None
-    playlist_id: int
+    playlist_id: str
     created_at: datetime
     updated_at: datetime
 
@@ -18,8 +18,12 @@ class PlaylistTrackBase(BaseModel):
 
 
 class PlaylistTrackCreate(BaseModel):
-    id: int
+    id: str
     name: str
     artist: str
     duration: Optional[int] = None
-    playlist_id: int
+    playlist_id: str
+
+
+class PlaylistTrackResponse(PlaylistTrackBase):
+    pass

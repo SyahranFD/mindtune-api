@@ -8,7 +8,7 @@ from .schemas_playlist_genre import PlaylistGenreResponse
 
 
 class PlaylistBase(BaseModel):
-    id: int
+    id: str
     spotify_id: str
     name: str
     phq9_score: Optional[int] = None
@@ -28,6 +28,7 @@ class PlaylistBase(BaseModel):
 
 
 class PlaylistCreate(BaseModel):
+    id: str
     spotify_id: str
     name: str
     phq9_score: Optional[int] = None
