@@ -20,8 +20,6 @@ class PlaylistBase(BaseModel):
     link_playlist: Optional[str] = None
     feedback: Optional[str] = None
     mode: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -40,6 +38,11 @@ class PlaylistCreate(BaseModel):
     link_playlist: Optional[str] = None
     feedback: Optional[str] = None
     mode: Optional[str] = None
+
+
+class PlaylistUpdate(BaseModel):
+    post_mood: Optional[str] = None
+    feedback: Optional[str] = None
 
 
 class PlaylistResponse(PlaylistBase):

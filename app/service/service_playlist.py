@@ -99,11 +99,28 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
     # 8. Save to database
     # Create playlist record
     playlist_id = str(uuid.uuid4())
+    
+    # Determine depression level based on PHQ-9 score
+    depression_level = ""
+    if phq9 == 0:
+        depression_level = "Tidak Ada Gejala"
+    elif 1 <= phq9 <= 4:
+        depression_level = "Minimal"
+    elif 5 <= phq9 <= 9:
+        depression_level = "Ringan"
+    elif 10 <= phq9 <= 14:
+        depression_level = "Sedang"
+    elif 15 <= phq9 <= 19:
+        depression_level = "Sedang-Parah"
+    elif phq9 >= 20:
+        depression_level = "Parah"
+    
     playlist_data = PlaylistCreate(
         id=playlist_id,
         spotify_id=user.spotify_id,
         name=title_ai,
         phq9_score=phq9,
+        depression_level=depression_level,
         pre_mood=str(pre_mood),
         total_tracks=len(valid_tracks),
         duration=total_duration_ms,
@@ -116,6 +133,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
         spotify_id=playlist_data.spotify_id,
         name=playlist_data.name,
         phq9_score=playlist_data.phq9_score,
+        depression_level=playlist_data.depression_level,
         pre_mood=playlist_data.pre_mood,
         total_tracks=playlist_data.total_tracks,
         duration=playlist_data.duration,
@@ -155,7 +173,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
 
 
 def get_all_playlists(db: Session, spotify_id: str):
-    playlists = db.query(PlaylistModel).filter(PlaylistModel.spotify_id == spotify_id).all()
+    playlists = db.query(PlaylistModel).filter(PlaylistModel.spotify_id == spotify_id).order_by(PlaylistModel.created_at.desc()).all()
     return playlists
 
 
@@ -163,4 +181,22 @@ def get_playlist_by_id(db: Session, playlist_id: str):
     playlist = db.query(PlaylistModel).filter(PlaylistModel.id == playlist_id).first()
     if not playlist:
         raise HTTPException(status_code=404, detail=f"Playlist with ID {playlist_id} not found")
+    return playlist
+
+
+def update_playlist(db: Session, playlist_id: str, post_mood: Optional[str] = None, feedback: Optional[str] = None):
+    playlist = db.query(PlaylistModel).filter(PlaylistModel.id == playlist_id).first()
+    if not playlist:
+        raise HTTPException(status_code=404, detail=f"Playlist with ID {playlist_id} not found")
+    
+    # Update only provided fields
+    if post_mood is not None:
+        playlist.post_mood = post_mood
+    
+    if feedback is not None:
+        playlist.feedback = feedback
+    
+    db.commit()
+    db.refresh(playlist)
+    
     return playlist

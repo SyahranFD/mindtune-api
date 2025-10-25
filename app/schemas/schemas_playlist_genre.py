@@ -5,11 +5,7 @@ from pydantic import BaseModel
 
 
 class PlaylistGenreBase(BaseModel):
-    id: str
     name: str
-    playlist_id: str
-    created_at: datetime
-    updated_at: datetime
 
     class Config:
         from_attributes = True
