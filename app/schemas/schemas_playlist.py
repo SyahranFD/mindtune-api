@@ -23,6 +23,9 @@ class PlaylistBase(BaseModel):
 
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda dt: dt.strftime("%d/%m/%Y %H:%M")
+        }
 
 
 class PlaylistCreate(BaseModel):
@@ -46,6 +49,7 @@ class PlaylistUpdate(BaseModel):
 
 
 class PlaylistResponse(PlaylistBase):
+    created_at: datetime
     time_ago: Optional[str] = None
     tracks: List[PlaylistTrackResponse] = []
     genres: List[PlaylistGenreResponse] = []
