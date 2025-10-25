@@ -43,19 +43,31 @@ def get_current_user_profile(
     return UserBase.model_validate(user)
 
 @router_user.post("/refresh-token")
-def refresh_token(current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
+def refresh_token(
+    refresh_token: str,
+    db: Session = Depends(get_db)
+):
+    # Get current user
+    user = db.query(UserModel).filter(UserModel.refresh_token == refresh_token).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
     # Refresh token
-    token_info = service_user.refresh_access_token(current_user.refresh_token)
+    token_info = service_user.refresh_access_token(refresh_token)
 
     # Update user with new tokens
-    current_user.access_token = token_info.get("access_token")
+    user.access_token = token_info.get("access_token")
     if token_info.get("refresh_token"):
-        current_user.refresh_token = token_info.get("refresh_token")
+        user.refresh_token = token_info.get("refresh_token")
 
     db.commit()
-    db.refresh(current_user)
+    db.refresh(user)
 
     return {
         "message": "Token refreshed successfully",
-        "access_token": current_user.access_token,
+        "access_token": user.access_token,
+        "refresh_token": user.refresh_token
     }

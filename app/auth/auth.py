@@ -68,7 +68,6 @@ async def get_current_user(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid Spotify token",
-                headers={"WWW-Authenticate": "Bearer"},
             )
             
         # Cari user berdasarkan spotify_id
@@ -93,7 +92,16 @@ async def get_current_user(
         
     except Exception as e:
         print(f"Error validating token with Spotify API: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-        )
+        error_message = str(e).lower()
+        
+        # Deteksi token expired dari pesan error
+        if "expired" in error_message or "token expired" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="The access token expired",
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials",
+            )
