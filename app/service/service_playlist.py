@@ -1,5 +1,6 @@
 import json
 import uuid
+from datetime import datetime, timedelta
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -174,6 +175,10 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
 
 def get_all_playlists(db: Session, spotify_id: str):
     playlists = db.query(PlaylistModel).filter(PlaylistModel.spotify_id == spotify_id).order_by(PlaylistModel.created_at.desc()).all()
+    
+    for playlist in playlists:
+        playlist.time_ago = calculate_time_ago(playlist.created_at)
+    
     return playlists
 
 
@@ -181,6 +186,9 @@ def get_playlist_by_id(db: Session, playlist_id: str):
     playlist = db.query(PlaylistModel).filter(PlaylistModel.id == playlist_id).first()
     if not playlist:
         raise HTTPException(status_code=404, detail=f"Playlist with ID {playlist_id} not found")
+    
+    playlist.time_ago = calculate_time_ago(playlist.created_at)
+    
     return playlist
 
 
@@ -200,3 +208,34 @@ def update_playlist(db: Session, playlist_id: str, post_mood: Optional[str] = No
     db.refresh(playlist)
     
     return playlist
+
+def calculate_time_ago(created_at):
+    """Convert created_at to a human-readable time ago format"""
+    try:
+        now = datetime.now()
+        diff = now - created_at
+        
+        # Convert to appropriate time unit
+        if diff < timedelta(minutes=1):
+            return "just now"
+        elif diff < timedelta(hours=1):
+            minutes = int(diff.total_seconds() / 60)
+            return f"{minutes} minutes ago"
+        elif diff < timedelta(days=1):
+            hours = int(diff.total_seconds() / 3600)
+            return f"{hours} hours ago"
+        elif diff < timedelta(weeks=1):
+            days = diff.days
+            return f"{days} days ago"
+        elif diff < timedelta(days=30):
+            weeks = int(diff.days / 7)
+            return f"{weeks} weeks ago" 
+        elif diff < timedelta(days=365):
+            months = int(diff.days / 30)
+            return f"{months} months ago"
+        else:
+            years = int(diff.days / 365)
+            return f"{years} years ago"
+    except Exception as e:
+        # Return a default string if there's an error
+        return "unknown time"

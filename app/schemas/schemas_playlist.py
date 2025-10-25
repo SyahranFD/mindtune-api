@@ -46,5 +46,6 @@ class PlaylistUpdate(BaseModel):
 
 
 class PlaylistResponse(PlaylistBase):
+    time_ago: Optional[str] = None
     tracks: List[PlaylistTrackResponse] = []
     genres: List[PlaylistGenreResponse] = []
