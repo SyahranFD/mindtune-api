@@ -12,9 +12,8 @@ def test_playlist_healing(
     pre_mood: int,
     phq9: int,
     locale: str,
-    genres: List[str],
-    allow_explicit: bool,
     desired_minutes: int,
+    top_ids: Optional[List[str]] = None,
 ):
     # Build the prompt using the service function
     prompt = service_ai.build_prompt_playlist_healing(
@@ -22,7 +21,6 @@ def test_playlist_healing(
         phq9=phq9,
         locale=locale,
         genres=genres,
-        allow_explicit=allow_explicit,
         desired_minutes=desired_minutes,
     )
     
