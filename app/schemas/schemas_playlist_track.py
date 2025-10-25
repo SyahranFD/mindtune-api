@@ -26,4 +26,9 @@ class PlaylistTrackCreate(BaseModel):
 
 
 class PlaylistTrackResponse(PlaylistTrackBase):
-    pass
+    @property
+    def duration_minutes(self) -> Optional[float]:
+        """Return the duration in minutes"""
+        if self.duration is not None:
+            return round(self.duration / 60000, 2)  # Convert ms to minutes and round to 2 decimal places
+        return None

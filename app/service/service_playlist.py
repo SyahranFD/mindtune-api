@@ -65,6 +65,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
     # 6. Search for tracks and add to playlist
     list_spotify_uri = []
     valid_tracks = []
+    total_duration_ms = 0
     
     for track in playlist_ai:
         try:
@@ -72,7 +73,16 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
             search_result = sp.search(q=query, type="track", limit=1)
             
             if search_result["tracks"]["items"]:
-                track_uri = search_result["tracks"]["items"][0]["uri"]
+                track_item = search_result["tracks"]["items"][0]
+                track_uri = track_item["uri"]
+                track_duration_ms = track_item["duration_ms"]
+                
+                # Add track duration to total
+                total_duration_ms += track_duration_ms
+                
+                # Add duration to track data
+                track["duration"] = track_duration_ms
+                
                 list_spotify_uri.append(track_uri)
                 valid_tracks.append(track)
         except Exception as e:
@@ -96,6 +106,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
         phq9_score=phq9,
         pre_mood=str(pre_mood),
         total_tracks=len(valid_tracks),
+        duration=total_duration_ms,
         link_playlist=spotify_playlist["external_urls"]["spotify"],
         mode="healing"
     )
@@ -107,6 +118,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
         phq9_score=playlist_data.phq9_score,
         pre_mood=playlist_data.pre_mood,
         total_tracks=playlist_data.total_tracks,
+        duration=playlist_data.duration,
         link_playlist=playlist_data.link_playlist,
         mode=playlist_data.mode
     )
@@ -121,6 +133,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
             id=track_id,
             name=track["title"],
             artist=track["artist"],
+            duration=track.get("duration"),
             playlist_id=db_playlist.id
         )
         db.add(db_track)
