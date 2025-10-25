@@ -29,13 +29,20 @@ def build_prompt_playlist_healing(
         top_ids: Optional[List[str]] = None
 ) -> str:
     prompt = {
-        "system": "You are a clinical-aware music recommender for a healing-mode web app. "
-                  "Your output MUST be exactly a JSON array of strings (track title - artist).",
+        "system": (
+            "You are a clinical-aware music recommender for a healing-mode web app. "
+            "Your output MUST be exactly a JSON object with two keys: "
+            "'playlist' (array of strings in 'title - artist' format) "
+            "and 'genres' (array of strings representing dominant genres in the playlist)."
+        ),
         "instructions": {
             "triage": {
                 "phq_threshold_referral": 20
             },
-            "goal": "Generate a therapeutic Spotify playlist to help regulate mood using ISO-principle: start mirroring current affect then gently uplift toward a calm/hopeful state.",
+            "goal": (
+                "Generate a therapeutic Spotify playlist to help regulate mood using ISO-principle: "
+                "start mirroring current affect then gently uplift toward a calm/hopeful state."
+            ),
             "audio_feature_guidelines": {
                 "map_pre_mood_to_valence": True,
                 "target_uplift_valence": 0.20,
@@ -47,8 +54,15 @@ def build_prompt_playlist_healing(
                 "avoid_explicit_unless_allowed": True,
                 "avoid_triggering_lyrics": True
             },
-            "output_format": "ONLY a JSON array of strings like [\"Holocene - Bon Iver\", \"Sunset Lover - Petit Biscuit\"]",
             "duration_minutes": desired_minutes,
+            "output_format": (
+                "Return ONLY a valid JSON object with this structure:\n\n"
+                "{\n"
+                "  \"playlist\": [\"Holocene - Bon Iver\", \"Sunset Lover - Petit Biscuit\"],\n"
+                "  \"genres\": [\"indie folk\", \"chillwave\", \"ambient pop\"]\n"
+                "}\n\n"
+                "No explanations or text outside the JSON."
+            ),
         },
         "user": {
             "pre_mood_slider": pre_mood,
@@ -57,4 +71,4 @@ def build_prompt_playlist_healing(
             "top_spotify_ids": top_ids or []
         }
     }
-    return json.dumps(prompt)
+    return json.dumps(prompt, indent=2)
