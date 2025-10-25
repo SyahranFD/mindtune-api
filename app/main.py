@@ -5,6 +5,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.openapi.utils import get_openapi
 
 from .router.router_user import router_user
+from .router.router_ai import router_ai
 
 load_dotenv(find_dotenv())
 
@@ -73,4 +74,5 @@ def docs():
 
 # Include routers
 app.include_router(router_user, prefix="/api/users", tags=["Users"])
+app.include_router(router_ai, prefix="/api/ai", tags=["AI"])
 
