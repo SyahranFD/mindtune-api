@@ -7,6 +7,7 @@ from fastapi.openapi.utils import get_openapi
 from .router.router_user import router_user
 from .router.router_ai import router_ai
 from .router.router_playlist import router_playlist
+from .routers.health import router as health_router
 
 load_dotenv(find_dotenv())
 
@@ -76,4 +77,5 @@ def docs():
 # Include routers
 app.include_router(router_user, prefix="/api/users", tags=["Users"])
 app.include_router(router_playlist, prefix="/api/playlists", tags=["Playlists"])
+app.include_router(health_router)
 
