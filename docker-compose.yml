@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: mindtune-api
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - SQLALCHEMY_DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@db:5432/${DB_NAME}
+      - HF_TOKEN=${HF_TOKEN}
+      - SP_CLIENT_ID=${SP_CLIENT_ID}
+      - SP_CLIENT_SECRET=${SP_CLIENT_SECRET}
+      - SP_REDIRECT_URI=${SP_REDIRECT_URI}
+      - SP_SCOPE=${SP_SCOPE}
+    volumes:
+      - ./.spotify_cache:/app/.spotify_cache
+      - ./app:/app/app
+    networks:
+      - mindtune-network
+
+  db:
+    image: postgres:15
+    container_name: mindtune-db
+    restart: always
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mindtune-network
+
+networks:
+  mindtune-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
