@@ -12,7 +12,7 @@ router_playlist = APIRouter()
 
 
 @router_playlist.post("/", response_model=PlaylistResponse, status_code=status.HTTP_201_CREATED)
-async def create_playlist(
+async def create_playlist_endpoint(
     pre_mood: int,
     phq9: int,
     db: Session = Depends(get_db),
@@ -50,7 +50,7 @@ async def update_playlist_feedback(
 
 
 @router_playlist.get("/", response_model=List[PlaylistResponse])
-async def get_all_playlists(
+async def get_all_playlists_endpoint(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user)
 ):
@@ -59,7 +59,7 @@ async def get_all_playlists(
 
 
 @router_playlist.get("/{playlist_id}", response_model=PlaylistResponse)
-async def get_playlist(
+async def get_playlist_endpoint(
     playlist_id: str,
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user)
