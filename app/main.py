@@ -7,7 +7,7 @@ from fastapi.openapi.utils import get_openapi
 from .router.router_user import router_user
 from .router.router_ai import router_ai
 from .router.router_playlist import router_playlist
-from .routers.health import router as health_router
+from .router.router_health import router as health_router
 
 load_dotenv(find_dotenv())
 
