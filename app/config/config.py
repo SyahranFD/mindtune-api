@@ -1,6 +1,8 @@
 import os
 from urllib.parse import quote_plus
+from dotenv import load_dotenv, find_dotenv
 
+load_dotenv(find_dotenv())
 DB_USER = "postgres"
 DB_PASS = quote_plus(os.getenv("DB_PASS", "admin"))
 DB_NAME = os.getenv("DB_NAME", "fastapi_mindtune_api")
