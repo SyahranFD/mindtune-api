@@ -7,7 +7,7 @@ from ..service import service_ai
 router_ai = APIRouter()
 
 
-@router_ai.post("/test-playlist-healing")
+@router_ai.get("/test-playlist-healing")
 def test_playlist_healing(
     pre_mood: int,
     phq9: int,
