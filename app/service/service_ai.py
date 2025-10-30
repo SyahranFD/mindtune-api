@@ -3,25 +3,37 @@ import json
 from typing import List, Optional
 from openai import OpenAI
 from dotenv import load_dotenv, find_dotenv
+import requests
+    from requests.exceptions import RequestException, Timeout, ConnectionError
 
 load_dotenv(find_dotenv())
 def call_hf_api(content: str) -> str:
     client = OpenAI(
         base_url="https://router.huggingface.co/v1",
         api_key=os.getenv("HF_TOKEN"),
+        timeout=120.0  # Set timeout to 120 seconds
     )
 
-    completion = client.chat.completions.create(
-        model="openai/gpt-oss-120b:groq",
-        messages=[
-            {
-                "role": "user",
-                "content": content
-            }
-        ],
-    )
-
-    return completion.choices[0].message.content
+    try:
+        completion = client.chat.completions.create(
+            model="openai/gpt-oss-120b:groq",
+            messages=[
+                {
+                    "role": "user",
+                    "content": content
+                }
+            ],
+        )
+        
+        return completion.choices[0].message.content
+    except Timeout:
+        raise Exception("Connection timeout when calling AI service. The service might be overloaded.")
+    except ConnectionError:
+        raise Exception("Connection error when connecting to AI service. Please check your network.")
+    except RequestException as e:
+        raise Exception(f"Request error: {str(e)}")
+    except Exception as e:
+        raise Exception(f"Unexpected error: {str(e)}")
 
 def build_prompt_playlist_healing(
         pre_mood: int,

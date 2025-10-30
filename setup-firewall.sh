@@ -23,6 +23,10 @@ echo "Mengatur kebijakan default..."
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 
+# Pastikan koneksi keluar ke Hugging Face API diizinkan secara eksplisit
+echo "Mengizinkan koneksi keluar ke Hugging Face API..."
+sudo ufw allow out to any port 443 proto tcp
+
 # Izinkan SSH
 echo "Mengizinkan koneksi SSH..."
 sudo ufw allow ssh
