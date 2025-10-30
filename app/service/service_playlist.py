@@ -1,3 +1,4 @@
+import os
 import json
 import uuid
 from datetime import datetime, timedelta
@@ -12,8 +13,10 @@ from app.model.playlist_genre import PlaylistGenreModel
 from app.model.user import UserModel
 from app.schemas.schemas_playlist import PlaylistCreate
 from app.service.service_ai import build_prompt_playlist_healing, call_hf_api
+from dotenv import load_dotenv, find_dotenv
 
 
+load_dotenv(find_dotenv())
 def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
     # Get user from database
     user = db.query(UserModel).filter(UserModel.spotify_id == spotify_id).first()
@@ -44,7 +47,10 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
         ai_response = call_hf_api(prompt)
         ai_data = json.loads(ai_response)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error calling AI API: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error calling AI API: {str(e)}" + f" HF_TOKEN: {os.getenv('HF_TOKEN')}"
+        )
     
     # 4. Extract data from AI response
     title_ai = ai_data.get("playlist_title")

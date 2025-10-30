@@ -2,11 +2,13 @@ import os
 import json
 from typing import List, Optional
 from openai import OpenAI
+from dotenv import load_dotenv, find_dotenv
 
+load_dotenv(find_dotenv())
 def call_hf_api(content: str) -> str:
     client = OpenAI(
         base_url="https://router.huggingface.co/v1",
-        api_key=os.environ["HF_TOKEN"],
+        api_key=os.getenv("HF_TOKEN"),
     )
 
     completion = client.chat.completions.create(
