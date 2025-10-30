@@ -170,6 +170,8 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
     db.commit()
     db.refresh(db_playlist)
     
+    db_playlist.time_ago = calculate_time_ago(db_playlist.created_at)
+    
     return db_playlist
 
 

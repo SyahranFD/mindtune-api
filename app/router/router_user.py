@@ -42,7 +42,7 @@ def get_current_user_profile(
     user = service_user.get_user_by_spotify_id(db, spotify_profile["id"])
     return UserBase.model_validate(user)
 
-@router_user.post("/refresh-token")
+@router_user.get("/refresh-token")
 def refresh_token(
     refresh_token: str,
     db: Session = Depends(get_db)

@@ -11,7 +11,7 @@ from app.service.service_playlist import create_playlist, get_all_playlists, get
 router_playlist = APIRouter()
 
 
-@router_playlist.post("/", response_model=PlaylistResponse, status_code=status.HTTP_201_CREATED)
+@router_playlist.get("/create", response_model=PlaylistResponse, status_code=status.HTTP_201_CREATED)
 async def create_playlist_endpoint(
     pre_mood: int,
     phq9: int,
@@ -22,10 +22,11 @@ async def create_playlist_endpoint(
     return playlist
 
 
-@router_playlist.put("/{playlist_id}/feedback", response_model=PlaylistResponse)
+@router_playlist.get("/{playlist_id}/feedback", response_model=PlaylistResponse)
 async def update_playlist_feedback(
     playlist_id: str,
-    playlist_data: PlaylistUpdate,
+    post_mood: int,
+    feedback: str,
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user)
 ):
@@ -42,8 +43,8 @@ async def update_playlist_feedback(
     updated_playlist = update_playlist(
         db, 
         playlist_id, 
-        post_mood=playlist_data.post_mood, 
-        feedback=playlist_data.feedback
+        post_mood=post_mood, 
+        feedback=feedback
     )
     
     return updated_playlist
