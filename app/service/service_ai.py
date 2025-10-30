@@ -4,7 +4,7 @@ from typing import List, Optional
 from openai import OpenAI
 from dotenv import load_dotenv, find_dotenv
 import requests
-    from requests.exceptions import RequestException, Timeout, ConnectionError
+from requests.exceptions import RequestException, Timeout, ConnectionError
 
 load_dotenv(find_dotenv())
 def call_hf_api(content: str) -> str:
