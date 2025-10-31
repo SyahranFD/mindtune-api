@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from pydantic import BaseModel
 
@@ -53,3 +53,15 @@ class PlaylistResponse(PlaylistBase):
     time_ago: Optional[str] = None
     tracks: List[PlaylistTrackResponse] = []
     genres: List[PlaylistGenreResponse] = []
+
+
+class DashboardResponse(BaseModel):
+    total_sessions: int
+    avg_mood_improvement: Optional[float] = None
+    most_frequent_genre: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            datetime: lambda dt: dt.strftime("%d/%m/%Y %H:%M")
+        }
