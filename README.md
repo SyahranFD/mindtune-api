@@ -2,12 +2,14 @@
 
 API untuk aplikasi MindTune yang membantu pengguna membuat playlist terapi musik berdasarkan kondisi mood mereka.
 
-## Deployment di VPS Hostinger dengan Docker
+## Deployment di VPS Tanpa Docker
 
 ### Prasyarat
 
-- VPS Hostinger dengan OS Linux (Ubuntu/Debian direkomendasikan)
-- Docker dan Docker Compose terinstal
+- VPS dengan OS Linux (Ubuntu/Debian direkomendasikan)
+- Python 3.9+ terinstal
+- PostgreSQL terinstal
+- Nginx terinstal
 - Git terinstal
 - Domain (opsional)
 
@@ -21,53 +23,61 @@ Login ke VPS Anda menggunakan SSH:
 ssh username@your_server_ip
 ```
 
-Update sistem dan install Docker + Docker Compose:
+Update sistem dan install dependensi:
 
 ```bash
 # Update sistem
 sudo apt update && sudo apt upgrade -y
 
 # Install dependensi
-sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
-
-# Tambahkan GPG key Docker
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-
-# Tambahkan repository Docker
-sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-
-# Update package database
-sudo apt update
-
-# Install Docker
-sudo apt install -y docker-ce
-
-# Tambahkan user ke grup docker (agar tidak perlu sudo)
-sudo usermod -aG docker ${USER}
-
-# Install Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.3/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-
-# Verifikasi instalasi
-docker --version
-docker-compose --version
+sudo apt install -y python3 python3-pip python3-venv postgresql postgresql-contrib nginx git
 ```
 
-Setelah menjalankan perintah di atas, logout dan login kembali agar perubahan grup docker diterapkan.
+#### 2. Konfigurasi PostgreSQL
 
-#### 2. Clone Repository
+```bash
+# Masuk ke PostgreSQL
+sudo -u postgres psql
+
+# Buat database
+CREATE DATABASE fastapi_mindtune_api;
+
+# Buat user dan berikan password
+CREATE USER mindtune WITH PASSWORD 'password_yang_aman';
+
+# Berikan hak akses ke database
+GRANT ALL PRIVILEGES ON DATABASE fastapi_mindtune_api TO mindtune;
+
+# Keluar dari PostgreSQL
+\q
+```
+
+#### 3. Clone Repository
 
 ```bash
 # Buat direktori untuk aplikasi
-mkdir -p /var/www/mindtune-api
-cd /var/www/mindtune-api
+sudo mkdir -p /var/www/mindtune-api-v1
+sudo chown -R $USER:$USER /var/www/mindtune-api-v1
+cd /var/www/mindtune-api-v1
 
 # Clone repository
 git clone https://github.com/username/mindtune-api.git .
 ```
 
-#### 3. Konfigurasi Environment Variables
+#### 4. Setup Python Environment
+
+```bash
+# Buat virtual environment
+python3 -m venv venv
+
+# Aktifkan virtual environment
+source venv/bin/activate
+
+# Install dependensi
+pip install -r requirement.txt
+```
+
+#### 5. Konfigurasi Environment Variables
 
 ```bash
 # Salin file .env.example ke .env
@@ -80,13 +90,13 @@ nano .env
 Sesuaikan nilai-nilai dalam file .env dengan kredensial dan konfigurasi yang benar:
 
 ```
-DB_USER=postgres
+DB_USER=mindtune
 DB_PASS=password_yang_aman
 DB_NAME=fastapi_mindtune_api
-DB_HOST=db
+DB_HOST=localhost
 DB_PORT=5432
 
-SQLALCHEMY_DATABASE_URL=postgresql://postgres:password_yang_aman@db:5432/fastapi_mindtune_api
+SQLALCHEMY_DATABASE_URL=postgresql://mindtune:password_yang_aman@localhost:5432/fastapi_mindtune_api
 
 HF_TOKEN=token_huggingface_anda
 
@@ -96,41 +106,69 @@ SP_REDIRECT_URI=https://domain-anda.com/api/users/callback
 SP_SCOPE=user-read-private user-read-email user-library-read playlist-modify-private
 ```
 
-#### 4. Build dan Jalankan dengan Docker Compose
+#### 6. Jalankan Migrasi Database
 
 ```bash
-# Build dan jalankan container
-docker-compose up -d --build
-
-# Cek status container
-docker-compose ps
-```
-
-#### 5. Jalankan Migrasi Database
-
-```bash
-# Masuk ke container API
-docker-compose exec api bash
+# Pastikan virtual environment aktif
+source venv/bin/activate
 
 # Jalankan migrasi Alembic
 alembic upgrade head
-
-# Keluar dari container
-exit
 ```
 
-#### 6. Konfigurasi Nginx (Opsional, jika menggunakan domain)
+#### 7. Konfigurasi Gunicorn dan Systemd
 
-Install Nginx:
+Buat file service untuk Systemd:
 
 ```bash
-sudo apt install -y nginx
+sudo nano /etc/systemd/system/mindtune-api-v1.service
 ```
+
+Tambahkan konfigurasi berikut:
+
+```ini
+[Unit]
+Description=MindTune API service
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/mindtune-api-v1
+ExecStart=/var/www/mindtune-api-v1/venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000
+Restart=always
+Environment="PATH=/var/www/mindtune-api-v1/venv/bin"
+EnvironmentFile=/var/www/mindtune-api-v1/.env
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Aktifkan dan jalankan service:
+
+```bash
+# Pastikan gunicorn terinstal
+pip install gunicorn
+
+# Ubah kepemilikan folder
+sudo chown -R www-data:www-data /var/www/mindtune-api-v1
+
+# Aktifkan service
+sudo systemctl enable mindtune-api-v1
+
+# Jalankan service
+sudo systemctl start mindtune-api-v1
+
+# Cek status service
+sudo systemctl status mindtune-api-v1
+```
+
+#### 8. Konfigurasi Nginx
 
 Buat konfigurasi Nginx untuk aplikasi:
 
 ```bash
-sudo nano /etc/nginx/sites-available/mindtune-api
+sudo nano /etc/nginx/sites-available/mindtune-api-v1
 ```
 
 Tambahkan konfigurasi berikut:
@@ -153,12 +191,12 @@ server {
 Aktifkan konfigurasi dan restart Nginx:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/mindtune-api /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/mindtune-api-v1 /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 ```
 
-#### 7. Konfigurasi SSL dengan Certbot (Opsional)
+#### 9. Konfigurasi SSL dengan Certbot (Opsional)
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
@@ -173,13 +211,22 @@ Untuk memperbarui aplikasi dengan perubahan terbaru dari repository:
 
 ```bash
 # Masuk ke direktori aplikasi
-cd /var/www/mindtune-api
+cd /var/www/mindtune-api-v1
+
+# Aktifkan virtual environment
+source venv/bin/activate
 
 # Pull perubahan terbaru
 git pull
 
-# Rebuild dan restart container
-docker-compose up -d --build
+# Install dependensi baru (jika ada)
+pip install -r requirement.txt
+
+# Jalankan migrasi (jika ada)
+alembic upgrade head
+
+# Restart service
+sudo systemctl restart mindtune-api-v1
 ```
 
 #### Backup Database
@@ -188,60 +235,60 @@ Untuk membuat backup database:
 
 ```bash
 # Backup database PostgreSQL
-docker-compose exec db pg_dump -U postgres fastapi_mindtune_api > backup_$(date +%Y%m%d).sql
+sudo -u postgres pg_dump fastapi_mindtune_api > backup_$(date +%Y%m%d).sql
 ```
 
 #### Melihat Log
 
 ```bash
 # Log aplikasi API
-docker-compose logs -f api
+sudo journalctl -u mindtune-api-v1
 
-# Log database
-docker-compose logs -f db
+# Log Nginx
+sudo tail -f /var/log/nginx/access.log
+sudo tail -f /var/log/nginx/error.log
 ```
 
-### Troubleshooting
+## Troubleshooting
 
-#### Restart Layanan
+### Service Tidak Berjalan
+
+Periksa status service:
 
 ```bash
-# Restart semua layanan
-docker-compose restart
+sudo systemctl status mindtune-api-v1
 
-# Restart layanan tertentu
-docker-compose restart api
-```
-
-#### Periksa Status
+Lihat log untuk mencari masalah:
 
 ```bash
-# Cek status container
-docker-compose ps
-
-# Cek penggunaan resource
-docker stats
+sudo journalctl -u mindtune-api-v1
 ```
 
-#### Masalah Database
+### Masalah Database
 
-Jika terjadi masalah dengan database, Anda dapat masuk ke container database:
+Jika terjadi masalah dengan database, coba masuk ke PostgreSQL:
 
 ```bash
-docker-compose exec db psql -U postgres -d fastapi_mindtune_api
+sudo -u postgres psql
 ```
 
-### Keamanan
+Kemudian periksa database dan tabel:
 
-- Pastikan untuk menggunakan password yang kuat untuk database
-- Batasi akses SSH hanya ke IP yang dipercaya
-- Aktifkan firewall (UFW) dan hanya buka port yang diperlukan (22, 80, 443)
-- Perbarui sistem secara berkala
+```sql
+\l
+\c fastapi_mindtune_api
+\dt
+```
+
+### Restart Service
+
+Jika perlu, restart service:
 
 ```bash
-# Konfigurasi UFW
-sudo ufw allow ssh
-sudo ufw allow http
-sudo ufw allow https
-sudo ufw enable
+sudo systemctl restart mindtune-api-v1
+sudo systemctl restart nginx
 ```
+
+## Deployment dengan Docker
+
+Untuk instruksi deployment menggunakan Docker, silakan lihat [DEPLOYMENT-DOCKER.md](DEPLOYMENT-DOCKER.md).

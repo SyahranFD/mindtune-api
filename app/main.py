@@ -59,23 +59,14 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
-# Daftar domain yang diizinkan
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.2:5173",
-    "https://mindtune.syahranfd.cloud",
-    "http://mindtune.syahranfd.cloud"
-]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=600
 )
 
 # Root endpoint with redirect to docs
