@@ -2,16 +2,18 @@ import os
 import json
 import uuid
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import List, Optional, Dict
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 import spotipy
+from sqlalchemy import func
+from collections import Counter
 
 from app.model.playlist import PlaylistModel
 from app.model.playlist_track import PlaylistTrackModel
 from app.model.playlist_genre import PlaylistGenreModel
 from app.model.user import UserModel
-from app.schemas.schemas_playlist import PlaylistCreate
+from app.schemas.schemas_playlist import PlaylistCreate, DashboardResponse
 from app.service.service_ai import build_prompt_playlist_healing, call_hf_api
 from dotenv import load_dotenv, find_dotenv
 
@@ -247,3 +249,48 @@ def calculate_time_ago(created_at):
     except Exception as e:
         # Return a default string if there's an error
         return "unknown time"
+
+
+def get_dashboard_data(db: Session, spotify_id: str) -> DashboardResponse:
+    playlists = db.query(PlaylistModel).filter(PlaylistModel.spotify_id == spotify_id).all()
+    
+    total_sessions = len(playlists)
+    
+    if total_sessions == 0:
+        return DashboardResponse(
+            total_sessions=0,
+            avg_mood_improvement=0.0,
+            most_frequent_genre=None,
+        )
+    
+    # Calculate average mood improvement
+    mood_improvements = []
+    for playlist in playlists:
+        # Only include playlists that have both pre_mood and post_mood
+        if playlist.pre_mood is not None and playlist.post_mood is not None:
+            try:
+                pre_mood = int(playlist.pre_mood)
+                post_mood = int(playlist.post_mood)
+                mood_improvement = post_mood - pre_mood
+                mood_improvements.append(mood_improvement)
+            except (ValueError, TypeError):
+                continue
+    
+    avg_mood_improvement = sum(mood_improvements) / len(mood_improvements) if mood_improvements else 0.0
+    
+    genres = db.query(PlaylistGenreModel).join(
+        PlaylistModel, PlaylistGenreModel.playlist_id == PlaylistModel.id
+    ).filter(
+        PlaylistModel.spotify_id == spotify_id
+    ).all()
+    
+    genre_counts = Counter([genre.name for genre in genres])
+    
+    most_frequent_genre = genre_counts.most_common(1)[0][0] if genre_counts else None
+    
+    
+    return DashboardResponse(
+        total_sessions=total_sessions,
+        avg_mood_improvement=round(avg_mood_improvement, 2),
+        most_frequent_genre=most_frequent_genre,
+    )
