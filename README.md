@@ -144,6 +144,12 @@ EnvironmentFile=/var/www/mindtune-api-v1/.env
 WantedBy=multi-user.target
 ```
 
+> **Catatan**: Jika port 8000 sudah digunakan oleh aplikasi lain di server Anda, Anda dapat mengubah port dengan mengganti baris ExecStart menjadi:
+> ```
+> ExecStart=/var/www/mindtune-api-v1/venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8001
+> ```
+> Pastikan juga untuk menyesuaikan konfigurasi Nginx pada langkah 8 agar mengarah ke port yang sama.
+
 Aktifkan dan jalankan service:
 
 ```bash
@@ -249,6 +255,42 @@ sudo tail -f /var/log/nginx/access.log
 sudo tail -f /var/log/nginx/error.log
 ```
 
+Panduan navigasi pager (less):
+
+- Space / Page Down: ke halaman berikutnya
+- b / Page Up: ke halaman sebelumnya
+- Enter / panah bawah: turun satu baris
+- y / k / panah atas: naik satu baris
+- g: lompat ke awal
+- G: lompat ke akhir
+- /kata: cari maju; n hasil berikutnya; N hasil sebelumnya
+- ?kata: cari mundur; n/N sama seperti di atas
+- q: keluar dari pager
+
+Opsi tanpa pager (langsung tampil penuh):
+
+```bash
+sudo journalctl -u mindtune-api-v1 --no-pager
+SYSTEMD_PAGER=cat sudo journalctl -u mindtune-api-v1
+sudo systemctl status mindtune-api-v1 --no-pager
+```
+
+Melihat log terbaru dan yang relevan:
+
+```bash
+# Live mengikuti log
+sudo journalctl -u mindtune-api-v1 -f --no-pager
+
+# Lompat ke akhir dan tampilkan 200 baris terakhir
+sudo journalctl -u mindtune-api-v1 -e -n 200 --no-pager
+
+# Filter berdasarkan waktu
+sudo journalctl -u mindtune-api-v1 --since "30 minutes ago" --no-pager
+
+# Tampilkan hanya error (prioritas err)
+sudo journalctl -u mindtune-api-v1 -p err -n 100 --no-pager
+```
+
 ## Troubleshooting
 
 ### Service Tidak Berjalan
@@ -260,7 +302,6 @@ sudo systemctl status mindtune-api-v1
 
 Lihat log untuk mencari masalah:
 
-```bash
 sudo journalctl -u mindtune-api-v1
 ```
 
