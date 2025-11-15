@@ -12,7 +12,7 @@ class PlaylistTrackModel(Base):
     name = Column(String(255), nullable=False)
     artist = Column(String(255), nullable=False)
     duration = Column(Integer, nullable=True)  # Duration in milliseconds
-    playlist_id = Column(Integer, ForeignKey("playlist.id"), nullable=False)
+    playlist_id = Column(Integer, ForeignKey("playlist.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, nullable=False, default=func.now())
     updated_at = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
 

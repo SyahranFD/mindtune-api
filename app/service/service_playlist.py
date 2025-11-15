@@ -13,19 +13,18 @@ from app.model.playlist import PlaylistModel
 from app.model.playlist_track import PlaylistTrackModel
 from app.model.playlist_genre import PlaylistGenreModel
 from app.model.user import UserModel
-from app.schemas.schemas_playlist import PlaylistCreate, DashboardResponse
+from app.schemas.schemas_playlist import PlaylistCreate, DashboardResponse, ChartMoodItem
 from app.service.service_ai import build_prompt_playlist_healing, call_hf_api
 from dotenv import load_dotenv, find_dotenv
+from app.util.util_convert_time import calculate_time_ago
 
 
 load_dotenv(find_dotenv())
 def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
-    # Get user from database
     user = db.query(UserModel).filter(UserModel.spotify_id == spotify_id).first()
     if not user:
         raise HTTPException(status_code=404, detail=f"User with Spotify ID {spotify_id} not found")
     
-    # Create Spotify client
     sp = spotipy.Spotify(auth=user.access_token)
     
     # 1. Get user's top tracks
@@ -60,6 +59,8 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
     playlist_ai = ai_data.get("playlist", [])
     genres_ai = ai_data.get("genres", [])
     
+    print(ai_data)
+    
     # 5. Create playlist in Spotify
     try:
         spotify_playlist = sp.user_playlist_create(
@@ -85,17 +86,12 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
                 track_item = search_result["tracks"]["items"][0]
                 track_uri = track_item["uri"]
                 track_duration_ms = track_item["duration_ms"]
-                
-                # Add track duration to total
                 total_duration_ms += track_duration_ms
-                
-                # Add duration to track data
                 track["duration"] = track_duration_ms
                 
                 list_spotify_uri.append(track_uri)
                 valid_tracks.append(track)
         except Exception as e:
-            # Skip this track if there's an error
             continue
     
     # 7. Add tracks to playlist
@@ -106,8 +102,10 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
             raise HTTPException(status_code=500, detail=f"Error adding tracks to playlist: {str(e)}")
     
     # 8. Save to database
-    # Create playlist record
     playlist_id = str(uuid.uuid4())
+    # Determine next sequence number per user
+    last_seq = db.query(func.max(PlaylistModel.sequence_number)).filter(PlaylistModel.spotify_id == user.spotify_id).scalar()
+    next_seq = (last_seq or 0) + 1
     
     # Determine depression level based on PHQ-9 score
     depression_level = ""
@@ -128,6 +126,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
         id=playlist_id,
         spotify_id=user.spotify_id,
         name=title_ai,
+        sequence_number=next_seq,
         phq9_score=phq9,
         depression_level=depression_level,
         pre_mood=str(pre_mood),
@@ -141,6 +140,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
         id=playlist_data.id,
         spotify_id=playlist_data.spotify_id,
         name=playlist_data.name,
+        sequence_number=playlist_data.sequence_number,
         phq9_score=playlist_data.phq9_score,
         depression_level=playlist_data.depression_level,
         pre_mood=playlist_data.pre_mood,
@@ -151,7 +151,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
     )
     
     db.add(db_playlist)
-    db.flush()  # Get the ID without committing
+    db.flush()
     
     # Add tracks
     for track in valid_tracks:
@@ -207,7 +207,6 @@ def update_playlist(db: Session, playlist_id: str, post_mood: Optional[str] = No
     if not playlist:
         raise HTTPException(status_code=404, detail=f"Playlist with ID {playlist_id} not found")
     
-    # Update only provided fields
     if post_mood is not None:
         playlist.post_mood = post_mood
     
@@ -219,37 +218,13 @@ def update_playlist(db: Session, playlist_id: str, post_mood: Optional[str] = No
     
     return playlist
 
-def calculate_time_ago(created_at):
-    """Convert created_at to a human-readable time ago format"""
-    try:
-        now = datetime.now()
-        diff = now - created_at
-        
-        # Convert to appropriate time unit
-        if diff < timedelta(minutes=1):
-            return "just now"
-        elif diff < timedelta(hours=1):
-            minutes = int(diff.total_seconds() / 60)
-            return f"{minutes} minutes ago"
-        elif diff < timedelta(days=1):
-            hours = int(diff.total_seconds() / 3600)
-            return f"{hours} hours ago"
-        elif diff < timedelta(weeks=1):
-            days = diff.days
-            return f"{days} days ago"
-        elif diff < timedelta(days=30):
-            weeks = int(diff.days / 7)
-            return f"{weeks} weeks ago" 
-        elif diff < timedelta(days=365):
-            months = int(diff.days / 30)
-            return f"{months} months ago"
-        else:
-            years = int(diff.days / 365)
-            return f"{years} years ago"
-    except Exception as e:
-        # Return a default string if there's an error
-        return "unknown time"
-
+def delete_playlist(db: Session, playlist_id: str) -> None:
+    playlist = db.query(PlaylistModel).filter(PlaylistModel.id == playlist_id).first()
+    if not playlist:
+        raise HTTPException(status_code=404, detail=f"Playlist with ID {playlist_id} not found")
+    
+    db.delete(playlist)
+    db.commit()
 
 def get_dashboard_data(db: Session, spotify_id: str) -> DashboardResponse:
     playlists = db.query(PlaylistModel).filter(PlaylistModel.spotify_id == spotify_id).all()
@@ -262,11 +237,9 @@ def get_dashboard_data(db: Session, spotify_id: str) -> DashboardResponse:
             avg_mood_improvement=0.0,
             most_frequent_genre=None,
         )
-    
-    # Calculate average mood improvement
+
     mood_improvements = []
     for playlist in playlists:
-        # Only include playlists that have both pre_mood and post_mood
         if playlist.pre_mood is not None and playlist.post_mood is not None:
             try:
                 pre_mood = int(playlist.pre_mood)
@@ -288,9 +261,28 @@ def get_dashboard_data(db: Session, spotify_id: str) -> DashboardResponse:
     
     most_frequent_genre = genre_counts.most_common(1)[0][0] if genre_counts else None
     
-    
     return DashboardResponse(
         total_sessions=total_sessions,
         avg_mood_improvement=round(avg_mood_improvement, 2),
         most_frequent_genre=most_frequent_genre,
     )
+
+
+def get_chart_mood(db: Session, spotify_id: str) -> List[ChartMoodItem]:
+    playlists = (
+        db.query(PlaylistModel)
+        .filter(PlaylistModel.spotify_id == spotify_id)
+        .order_by(PlaylistModel.sequence_number.asc())
+        .all()
+    )
+
+    timeline: List[ChartMoodItem] = [
+        ChartMoodItem(
+            sequence_number=p.sequence_number,
+            pre_mood=p.pre_mood,
+            post_mood=p.post_mood,
+        )
+        for p in playlists
+    ]
+
+    return timeline
