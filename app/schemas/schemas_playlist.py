@@ -67,3 +67,12 @@ class DashboardResponse(BaseModel):
         json_encoders = {
             datetime: lambda dt: dt.strftime("%d/%m/%Y %H:%M")
         }
+
+
+class ChartMoodItem(BaseModel):
+    sequence_number: int
+    pre_mood: Optional[str] = None
+    post_mood: Optional[str] = None
+
+    class Config:
+        from_attributes = True

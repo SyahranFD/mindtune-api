@@ -13,7 +13,7 @@ from app.model.playlist import PlaylistModel
 from app.model.playlist_track import PlaylistTrackModel
 from app.model.playlist_genre import PlaylistGenreModel
 from app.model.user import UserModel
-from app.schemas.schemas_playlist import PlaylistCreate, DashboardResponse
+from app.schemas.schemas_playlist import PlaylistCreate, DashboardResponse, ChartMoodItem
 from app.service.service_ai import build_prompt_playlist_healing, call_hf_api
 from dotenv import load_dotenv, find_dotenv
 from app.util.util_convert_time import calculate_time_ago
@@ -218,6 +218,14 @@ def update_playlist(db: Session, playlist_id: str, post_mood: Optional[str] = No
     
     return playlist
 
+def delete_playlist(db: Session, playlist_id: str) -> None:
+    playlist = db.query(PlaylistModel).filter(PlaylistModel.id == playlist_id).first()
+    if not playlist:
+        raise HTTPException(status_code=404, detail=f"Playlist with ID {playlist_id} not found")
+    
+    db.delete(playlist)
+    db.commit()
+
 def get_dashboard_data(db: Session, spotify_id: str) -> DashboardResponse:
     playlists = db.query(PlaylistModel).filter(PlaylistModel.spotify_id == spotify_id).all()
     
@@ -240,9 +248,9 @@ def get_dashboard_data(db: Session, spotify_id: str) -> DashboardResponse:
                 mood_improvements.append(mood_improvement)
             except (ValueError, TypeError):
                 continue
-
+    
     avg_mood_improvement = sum(mood_improvements) / len(mood_improvements) if mood_improvements else 0.0
-
+    
     genres = db.query(PlaylistGenreModel).join(
         PlaylistModel, PlaylistGenreModel.playlist_id == PlaylistModel.id
     ).filter(
@@ -259,10 +267,22 @@ def get_dashboard_data(db: Session, spotify_id: str) -> DashboardResponse:
         most_frequent_genre=most_frequent_genre,
     )
 
-def delete_playlist(db: Session, playlist_id: str) -> None:
-    playlist = db.query(PlaylistModel).filter(PlaylistModel.id == playlist_id).first()
-    if not playlist:
-        raise HTTPException(status_code=404, detail=f"Playlist with ID {playlist_id} not found")
-    
-    db.delete(playlist)
-    db.commit()
+
+def get_chart_mood(db: Session, spotify_id: str) -> List[ChartMoodItem]:
+    playlists = (
+        db.query(PlaylistModel)
+        .filter(PlaylistModel.spotify_id == spotify_id)
+        .order_by(PlaylistModel.sequence_number.asc())
+        .all()
+    )
+
+    timeline: List[ChartMoodItem] = [
+        ChartMoodItem(
+            sequence_number=p.sequence_number,
+            pre_mood=p.pre_mood,
+            post_mood=p.post_mood,
+        )
+        for p in playlists
+    ]
+
+    return timeline

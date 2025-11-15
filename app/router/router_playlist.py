@@ -5,8 +5,8 @@ from typing import List
 from app.config.database import get_db
 from app.auth.auth import get_current_user
 from app.model.user import UserModel
-from app.schemas.schemas_playlist import PlaylistResponse, PlaylistUpdate, DashboardResponse
-from app.service.service_playlist import create_playlist, get_all_playlists, get_playlist_by_id, update_playlist, get_dashboard_data, delete_playlist
+from app.schemas.schemas_playlist import PlaylistResponse, PlaylistUpdate, DashboardResponse, ChartMoodItem
+from app.service.service_playlist import create_playlist, get_all_playlists, get_playlist_by_id, update_playlist, get_dashboard_data, delete_playlist, get_chart_mood
 
 router_playlist = APIRouter()
 
@@ -76,16 +76,6 @@ async def get_playlist_endpoint(
     
     return playlist
 
-
-@router_playlist.get("/dashboard/stats", response_model=DashboardResponse)
-async def get_dashboard_endpoint(
-    db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user)
-):
-    dashboard_data = get_dashboard_data(db, current_user.spotify_id)
-    return dashboard_data
-
-
 @router_playlist.delete("/{playlist_id}")
 async def delete_playlist_endpoint(
     playlist_id: str,
@@ -101,3 +91,21 @@ async def delete_playlist_endpoint(
 
     delete_playlist(db, playlist_id)
     return {"detail": "Playlist berhasil dihapus"}
+
+
+@router_playlist.get("/dashboard/stats", response_model=DashboardResponse)
+async def get_dashboard_endpoint(
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    dashboard_data = get_dashboard_data(db, current_user.spotify_id)
+    return dashboard_data
+
+
+@router_playlist.get("/moods/chart", response_model=List[ChartMoodItem])
+async def get_chart_mood_endpoint(
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    chart = get_chart_mood(db, current_user.spotify_id)
+    return chart
