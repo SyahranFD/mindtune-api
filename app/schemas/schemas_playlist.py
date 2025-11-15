@@ -11,6 +11,7 @@ class PlaylistBase(BaseModel):
     id: str
     spotify_id: str
     name: str
+    sequence_number: int
     phq9_score: Optional[int] = None
     depression_level: Optional[str] = None
     pre_mood: Optional[str] = None
@@ -32,6 +33,7 @@ class PlaylistCreate(BaseModel):
     id: str
     spotify_id: str
     name: str
+    sequence_number: int
     phq9_score: Optional[int] = None
     depression_level: Optional[str] = None
     pre_mood: Optional[str] = None

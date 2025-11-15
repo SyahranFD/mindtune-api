@@ -103,6 +103,9 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
     
     # 8. Save to database
     playlist_id = str(uuid.uuid4())
+    # Determine next sequence number per user
+    last_seq = db.query(func.max(PlaylistModel.sequence_number)).filter(PlaylistModel.spotify_id == user.spotify_id).scalar()
+    next_seq = (last_seq or 0) + 1
     
     # Determine depression level based on PHQ-9 score
     depression_level = ""
@@ -123,6 +126,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
         id=playlist_id,
         spotify_id=user.spotify_id,
         name=title_ai,
+        sequence_number=next_seq,
         phq9_score=phq9,
         depression_level=depression_level,
         pre_mood=str(pre_mood),
@@ -136,6 +140,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
         id=playlist_data.id,
         spotify_id=playlist_data.spotify_id,
         name=playlist_data.name,
+        sequence_number=playlist_data.sequence_number,
         phq9_score=playlist_data.phq9_score,
         depression_level=playlist_data.depression_level,
         pre_mood=playlist_data.pre_mood,

@@ -50,9 +50,6 @@ def build_prompt_playlist_healing(
             "'playlist' (array of objects with 'title' and 'artist'), and 'genres' (array of strings)."
         ),
         "instructions": {
-            "triage": {
-                "phq_threshold_referral": 20
-            },
             "goal": (
                 "Generate a therapeutic Spotify playlist to help regulate mood using the ISO principle: "
                 "start by reflecting the user's current affect (based on pre_mood) and then gently uplift toward calm, relief, or hope. "
