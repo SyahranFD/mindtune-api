@@ -263,9 +263,6 @@ def delete_playlist(db: Session, playlist_id: str) -> None:
     playlist = db.query(PlaylistModel).filter(PlaylistModel.id == playlist_id).first()
     if not playlist:
         raise HTTPException(status_code=404, detail=f"Playlist with ID {playlist_id} not found")
-
-    db.query(PlaylistTrackModel).filter(PlaylistTrackModel.playlist_id == playlist.id).delete(synchronize_session=False)
-    db.query(PlaylistGenreModel).filter(PlaylistGenreModel.playlist_id == playlist.id).delete(synchronize_session=False)
-
+    
     db.delete(playlist)
     db.commit()

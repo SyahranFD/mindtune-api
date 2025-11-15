@@ -12,7 +12,7 @@ class PlaylistModel(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    spotify_id = Column(String(255), ForeignKey("user.spotify_id"), nullable=False)
+    spotify_id = Column(String(255), ForeignKey("user.spotify_id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
     phq9_score = Column(Integer, nullable=True)
     depression_level = Column(String(50), nullable=True)
@@ -28,6 +28,6 @@ class PlaylistModel(Base):
     updated_at = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
 
     # Relationships
-    user = relationship("UserModel", back_populates="playlists")
-    tracks = relationship("PlaylistTrackModel", back_populates="playlist")
-    genres = relationship("PlaylistGenreModel", back_populates="playlist")
+    user = relationship("UserModel", back_populates="playlists", passive_deletes=True)
+    tracks = relationship("PlaylistTrackModel", back_populates="playlist", passive_deletes=True)
+    genres = relationship("PlaylistGenreModel", back_populates="playlist", passive_deletes=True)

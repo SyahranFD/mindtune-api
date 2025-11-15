@@ -17,4 +17,4 @@ class UserModel(Base):
     updated_at = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
     
     # Relationships
-    playlists = relationship("PlaylistModel", back_populates="user")
+    playlists = relationship("PlaylistModel", back_populates="user", passive_deletes=True)
