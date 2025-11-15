@@ -36,20 +36,18 @@ def call_hf_api(content: str) -> str:
         raise Exception(f"Unexpected error: {str(e)}")
 
 def build_prompt_playlist_healing(
-        pre_mood: int,
-        phq9: int,
-        locale: str,
-        desired_minutes: str,
-        top_ids: Optional[List[str]] = None
+    pre_mood: int,
+    phq9: int,
+    locale: str,
+    desired_minutes: str,
+    top_ids: Optional[List[str]] = None
 ) -> str:
     prompt = {
         "system": (
             "You are a clinical-aware music recommender for a healing-mode web app. "
             "Your output MUST be exactly a JSON object with four keys: "
-            "'playlist_title' (string), "
-            "'description' (string), "
-            "'playlist' (array of objects with 'title' and 'artist'), "
-            "and 'genres' (array of strings)."
+            "'playlist_title' (string), 'description' (string), "
+            "'playlist' (array of objects with 'title' and 'artist'), and 'genres' (array of strings)."
         ),
         "instructions": {
             "triage": {
@@ -66,7 +64,26 @@ def build_prompt_playlist_healing(
                 "target_uplift_valence": 0.20,
                 "start_energy_range": [0.15, 0.40],
                 "final_energy_range": [0.35, 0.6],
-                "acousticness_min": 0.6
+                "acousticness_min": 0.6,
+                "require_tempo_variation_percent": 50,  # require at least ~50% tempo spread across playlist
+                "encourage_instrumentation_mix": True
+            },
+            "diversity_guidelines": {
+                "max_tracks_per_artist": 1,
+                "min_unique_genres": 3,
+                "min_unique_decades": 2,
+                "avoid_too_many_similar_sounding": True,
+                "prefer_varied_vocal_styles": True,
+                "prefer_mix_of_international_and_local_artists": True,
+                "avoid_specific_titles": ["Holocene", "Heartbeats", "Fast Car"],
+                "avoid_covers_or_near_duplications": True
+            },
+            "curation_rules": {
+                "do_not_repeat_artist_names": True,
+                "do_not_repeat_track_titles": True,
+                "include_at_least_one_instrumental_or_ambient_track": True,
+                "limit_mainstream_hits": "Prefer lesser-known or deep-cut tracks when they match mood better; allow 1 well-known song max.",
+                "include_at_least_one_track_from_user_top_ids_if_fit": True
             },
             "safety": {
                 "avoid_explicit_unless_allowed": True,
@@ -84,9 +101,11 @@ def build_prompt_playlist_healing(
                 "  ],\n"
                 "  \"genres\": [\"<genre 1>\", \"<genre 2>\", \"<genre 3>\"]\n"
                 "}\n\n"
-                "Do NOT copy or reuse the example titles, artists, or genres. "
-                "Generate completely new and context-appropriate content for the current user data."
-            ),
+                "DO NOT copy or reuse the example titles, artists, or genres. "
+                "Generate completely new and context-appropriate content for the current user data. "
+                "Ensure playlist tracks follow the diversity and curation rules above. "
+                "If a user's phq9_score >= phq_threshold_referral (20), include a compassionate referral suggestion as part of the description (one short sentence) but still return the JSON structure exactly as specified."
+            )
         },
         "user": {
             "pre_mood_slider": pre_mood,
