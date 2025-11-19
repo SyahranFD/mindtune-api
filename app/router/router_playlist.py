@@ -102,7 +102,7 @@ async def get_dashboard_endpoint(
     return dashboard_data
 
 
-@router_playlist.get("/moods/chart", response_model=List[ChartMoodItem])
+@router_playlist.get("/chart/mood", response_model=List[ChartMoodItem])
 async def get_chart_mood_endpoint(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user)

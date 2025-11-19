@@ -184,7 +184,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
 
 
 def get_all_playlists(db: Session, spotify_id: str):
-    playlists = db.query(PlaylistModel).filter(PlaylistModel.spotify_id == spotify_id).order_by(PlaylistModel.created_at.desc()).all()
+    playlists = db.query(PlaylistModel).filter(PlaylistModel.spotify_id == spotify_id).order_by(PlaylistModel.sequence_number.desc()).all()
     
     for playlist in playlists:
         playlist.time_ago = calculate_time_ago(playlist.created_at)
