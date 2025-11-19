@@ -19,17 +19,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema: add sequence_number and unique constraint per user."""
+    """Upgrade schema: add sequence_number column for playlist."""
     op.add_column(
         'playlist',
         sa.Column('sequence_number', sa.Integer(), nullable=False, server_default='1')
     )
-    op.create_unique_constraint(
-        'uq_playlist_user_seq', 'playlist', ['spotify_id', 'sequence_number']
-    )
 
 
 def downgrade() -> None:
-    """Downgrade schema: drop unique constraint and column."""
-    op.drop_constraint('uq_playlist_user_seq', 'playlist', type_='unique')
+    """Downgrade schema: drop sequence_number column."""
     op.drop_column('playlist', 'sequence_number')
