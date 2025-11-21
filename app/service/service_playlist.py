@@ -15,6 +15,7 @@ from app.model.playlist_genre import PlaylistGenreModel
 from app.model.user import UserModel
 from app.schemas.schemas_playlist import PlaylistCreate, DashboardResponse, ChartMoodItem
 from app.service.service_ai import build_prompt_playlist_healing, call_hf_api
+from app.rag.rag_store import SpotifyRAG
 from dotenv import load_dotenv, find_dotenv
 from app.util.util_convert_time import calculate_time_ago
 
@@ -35,22 +36,39 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
         raise HTTPException(status_code=500, detail=f"Error fetching top tracks: {str(e)}")
     
     # 2. Build prompt for AI
+    # Gunakan location manusiawi agar AI tidak salah tafsir 'id' menjadi India
+    location = "Indonesia"
     prompt = build_prompt_playlist_healing(
         pre_mood=pre_mood,
         phq9=phq9,
-        locale="id-ID",
+        location=location,
         desired_minutes="30-45",
         top_ids=top_ids
     )
     
-    # 3. Call AI API
+    # 3. Call AI API lalu validasi terhadap katalog RAG
     try:
         ai_response = call_hf_api(prompt)
         ai_data = json.loads(ai_response)
+
+        # Rekonstruksi katalog untuk validator (menggunakan parameter sama)
+        rag = SpotifyRAG()
+        rag.load()
+        iso_df = rag.curate_iso_playlist(
+            pre_mood=pre_mood,
+            phq9=phq9,
+            desired_minutes="30-45",
+            top_ids=top_ids,
+            location=location
+        )
+        catalog = rag.to_catalog(iso_df, max_items=80)
+
+        from app.service.service_ai import validate_ai_output
+        ai_data = validate_ai_output(ai_data, catalog, count=10)
     except Exception as e:
         raise HTTPException(
-            status_code=500, 
-            detail=f"Error calling AI API: {str(e)}" + f" HF_TOKEN: {os.getenv('HF_TOKEN')}"
+            status_code=500,
+            detail=f"Error calling/validating AI API: {str(e)}"
         )
     
     # 4. Extract data from AI response
@@ -76,19 +94,65 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
     list_spotify_uri = []
     valid_tracks = []
     total_duration_ms = 0
-    
+    # Gunakan URIs langsung jika tersedia dari validator untuk mengurangi kegagalan pencarian
+    direct_uris = ai_data.get("playlist_uris", []) or []
+    for uri in direct_uris:
+        list_spotify_uri.append(uri)
+    # Buat peta katalog untuk fallback lookup
+    cat_map = {(
+        c['title'].strip().lower(),
+        c['artist'].strip().lower()
+    ): c for c in catalog}
+    # Gunakan market Indonesia secara default
+    market = "ID"
+
     for track in playlist_ai:
         try:
-            query = f"track:{track['title']} artist:{track['artist']}"
-            search_result = sp.search(q=query, type="track", limit=1)
-            
-            if search_result["tracks"]["items"]:
-                track_item = search_result["tracks"]["items"][0]
+            # Jika URI tersedia dari katalog, gunakan langsung
+            key = (track['title'].strip().lower(), track['artist'].strip().lower())
+            cat_item = cat_map.get(key)
+            if cat_item and cat_item.get('uri') and cat_item['uri'] not in list_spotify_uri:
+                list_spotify_uri.append(cat_item['uri'])
+                # Durasi dari katalog jika ada, kalau tidak akan diisi setelah fetch detail
+                if cat_item.get('duration_ms'):
+                    total_duration_ms += int(cat_item['duration_ms'])
+                    track["duration"] = int(cat_item['duration_ms'])
+                valid_tracks.append(track)
+                continue
+
+            # Robust search fallback dengan beberapa variasi artist
+            artist_raw = track['artist']
+            title_raw = track['title']
+            variants = []
+            # varian 1: track/artist penuh
+            variants.append(f"track:{title_raw} artist:{artist_raw}")
+            # varian 2: artist bersih (ambil bagian pertama sebelum pemisah umum)
+            separators = [';', ',', ' feat ', ' ft ', ' featuring ', ' x ', ' & ']
+            artist_clean = artist_raw
+            for sep in separators:
+                if sep in artist_clean:
+                    artist_clean = artist_clean.split(sep)[0]
+            artist_clean = artist_clean.strip()
+            if artist_clean and artist_clean != artist_raw:
+                variants.append(f"track:{title_raw} artist:{artist_clean}")
+            # varian 3: query bebas
+            variants.append(f"{title_raw} {artist_clean or artist_raw}")
+            # varian 4: hanya judul
+            variants.append(f"{title_raw}")
+
+            track_item = None
+            for q in variants:
+                search_result = sp.search(q=q, type="track", limit=3, market=market)
+                if search_result.get("tracks", {}).get("items"):
+                    track_item = search_result["tracks"]["items"][0]
+                    break
+
+            if track_item:
                 track_uri = track_item["uri"]
                 track_duration_ms = track_item["duration_ms"]
                 total_duration_ms += track_duration_ms
                 track["duration"] = track_duration_ms
-                
+
                 list_spotify_uri.append(track_uri)
                 valid_tracks.append(track)
         except Exception as e:
@@ -118,7 +182,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
     elif 10 <= phq9 <= 14:
         depression_level = "Sedang"
     elif 15 <= phq9 <= 19:
-        depression_level = "Sedang-Parah"
+        depression_level = "Cukup Parah"
     elif phq9 >= 20:
         depression_level = "Parah"
     
