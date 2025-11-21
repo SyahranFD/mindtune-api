@@ -117,7 +117,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
     elif 10 <= phq9 <= 14:
         depression_level = "Sedang"
     elif 15 <= phq9 <= 19:
-        depression_level = "Sedang-Parah"
+        depression_level = "Cukup Parah"
     elif phq9 >= 20:
         depression_level = "Parah"
     
