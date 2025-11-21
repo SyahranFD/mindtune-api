@@ -38,8 +38,7 @@ def create_playlist(db: Session, spotify_id: str, pre_mood: int, phq9: int):
     prompt = build_prompt_playlist_healing(
         pre_mood=pre_mood,
         phq9=phq9,
-        locale="id-ID",
-        desired_minutes="30-45",
+        location="Indonesia",
         top_ids=top_ids
     )
     

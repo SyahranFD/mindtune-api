@@ -11,14 +11,12 @@ router_ai = APIRouter()
 def test_playlist_healing(
     pre_mood: int,
     phq9: int,
-    locale: str,
-    desired_minutes: str,
+    location: str,
 ):
     prompt = service_ai.build_prompt_playlist_healing(
         pre_mood=pre_mood,
         phq9=phq9,
-        locale=locale,
-        desired_minutes=desired_minutes,
+        location=location,
     )
 
     result_str = service_ai.call_hf_api(prompt)
