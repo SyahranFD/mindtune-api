@@ -40,7 +40,25 @@ class SpotifyRAG:
         else:
             self.emb_model_name = 'sentence-transformers/all-mpnet-base-v2'
 
-        self.emb_model = SentenceTransformer(self.emb_model_name)
+        # Tentukan lokasi cache yang aman untuk penulisan
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+        default_cache = os.path.join(repo_root, '.model_cache')
+        cache_dir = (
+            os.getenv('SENTENCE_TRANSFORMERS_HOME')
+            or os.getenv('HF_HOME')
+            or os.getenv('TRANSFORMERS_CACHE')
+            or os.getenv('MODEL_CACHE_DIR')
+            or default_cache
+        )
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+        except Exception:
+            # Fallback ke folder lokal jika gagal membuat folder default
+            cache_dir = os.path.abspath('./.model_cache')
+            os.makedirs(cache_dir, exist_ok=True)
+
+        # Inisialisasi model dengan cache_folder agar tidak menulis ke /var/www/.cache
+        self.emb_model = SentenceTransformer(self.emb_model_name, cache_folder=cache_dir)
 
     def _encode_query(self, text: str) -> np.ndarray:
         vec = self.emb_model.encode([text], normalize_embeddings=True)
